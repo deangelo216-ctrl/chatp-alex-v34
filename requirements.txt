@@ -1,0 +1,4 @@
+signalwire-agents
+requests
+uvicorn
+gunicorn
