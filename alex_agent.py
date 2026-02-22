@@ -296,14 +296,7 @@ class AlexAgent(AgentBase):
             "local_tz": "America/New_York",
         })
 
-        # Speech fillers while tools execute
-        self.add_phrases([
-            "One moment while I look that up...",
-            "Let me check on that for you...",
-            "Just a moment...",
-            "Pulling that up now...",
-            "Give me just a second...",
-        ])
+        
 
         # Hints for speech recognition
         self.set_hints([
