@@ -1,41 +1,60 @@
+You are Alex, the AI booking concierge for CHATP Concierge — a nationwide
+premium ground transportation service specializing in airport rides.
+
+## YOUR PERSONALITY
+- Warm, professional, efficient — like a premium hotel concierge
+- Match the caller's pace and energy (speech cadence detection)
+- Use the caller's name naturally once you learn it
+- Never robotic, never rushed, never pushy
+- Use "guest" — never "rider" or "passenger"
 #!/usr/bin/env python3
+
 """
 =============================================================================
+
 ALEX v3.4.0 — CHATP CONCIERGE AI BOOKING AGENT
+
 =============================================================================
+
 SignalWire Agents SDK + Supabase + DeepSeek Brain Integration
+
 Deploy on DigitalOcean with nginx + systemd
 
-Version:  3.4.0 DEFINITIVE
-Created:  February 19, 2026
+Version: 3.4.0 DEFINITIVE
+
+Created: February 19, 2026
 
 18 SWAIG Tools:
-  1.  lookup_guest            — Find returning guest by phone
-  2.  create_guest            — Create new guest record
-  3.  create_reservation      — Save complete reservation
-  4.  calculate_fare          — CLE flat-rate zones + distance-based
-  5.  validate_address        — Google Maps geocoding
-  6.  find_nearest_airport    — Google Places airport search
-  7.  validate_promo_code     — Check promo code + calc discount
-  8.  transfer_to_dispatch    — Hand off to DeAngelo
-  9.  send_confirmation_sms   — SignalWire SMS to guest
-  10. lookup_flight           — FlightAware flight + gate + baggage
-  11. get_weather_for_trip     — OpenWeather for sign-off
-  12. get_driver_eta           — Estimated driver arrival
-  13. get_curbside_info        — Airport pickup instructions
-  14. check_saved_routes       — Quick re-book for returning guests
-  15. airport_pickup_info      — Terminal/gate details
-  16. lookup_partner           — Find provider in destination city
-  17. assess_trip_timing       — Check if timing is tight for flight
-  18. log_incident_and_notify  — Error handling + guest notification
+
+1. lookup_guest — Find returning guest by phone
+2. create_guest — Create new guest record
+3. create_reservation — Save complete reservation
+4. calculate_fare — CLE flat-rate zones + distance-based
+5. validate_address — Google Maps geocoding
+6. find_nearest_airport — Google Places airport search
+7. validate_promo_code — Check promo code + calc discount
+8. transfer_to_dispatch — Hand off to DeAngelo
+9. send_confirmation_sms — SignalWire SMS to guest
+10. lookup_flight — FlightAware flight + gate + baggage
+11. get_weather_for_trip — OpenWeather for sign-off
+12. get_driver_eta — Estimated driver arrival
+13. get_curbside_info — Airport pickup instructions
+14. check_saved_routes — Quick re-book for returning guests
+15. airport_pickup_info — Terminal/gate details
+16. lookup_partner — Find provider in destination city
+17. assess_trip_timing — Check if timing is tight for flight
+18. log_incident_and_notify — Error handling + guest notification
 
 Backend Intelligence:
-  - DeepSeek Brain for post-call analysis, dispatch matching,
-    guest insights, prompt refinement, and marketing intelligence
+
+- DeepSeek Brain for post-call analysis, dispatch matching,
+  guest insights, prompt refinement, and marketing intelligence
 
 Architecture:
-  Guest → SignalWire (voice) → DigitalOcean (this code) → Supabase (data)
-  Post-call → DeepSeek Brain (analysis) → Supabase (insights)
+
+Guest → SignalWire (voice) → DigitalOcean (this code) → Supabase (data)
+Post-call → DeepSeek Brain (analysis) → Supabase (insights)
+
 =============================================================================
 """
 
@@ -53,6 +72,7 @@ from signalwire_agents import AgentBase
 # =============================================================================
 # LOGGING
 # =============================================================================
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -61,22 +81,28 @@ logging.basicConfig(
         logging.StreamHandler(),
     ],
 )
+
 logger = logging.getLogger("alex-v3")
 
 # =============================================================================
 # ENVIRONMENT VARIABLES
 # =============================================================================
-SUPABASE_URL        = os.environ.get("SUPABASE_URL", "https://ishlgalmjmdzmgrulqvs.supabase.co")
-SUPABASE_KEY        = os.environ.get("SUPABASE_KEY", "")
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ishlgalmjmdzmgrulqvs.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
 FLIGHTAWARE_API_KEY = os.environ.get("FLIGHTAWARE_API_KEY", "")
-SIGNALWIRE_PROJECT  = os.environ.get("SIGNALWIRE_PROJECT_ID", "70aa2fb9-dd43-4ca5-80bc-a5f315910782")
-SIGNALWIRE_TOKEN    = os.environ.get("SIGNALWIRE_API_TOKEN", "")
-SIGNALWIRE_SPACE    = os.environ.get("SIGNALWIRE_SPACE", "chatpairportrideshare-com")
-DEEPSEEK_API_KEY    = os.environ.get("DEEPSEEK_API_KEY", "")
-DEANGELO_CELL       = os.environ.get("DEANGELO_CELL", "+12163213000")
-ALEX_NUMBER         = os.environ.get("ALEX_NUMBER", "+12162936500")
+
+SIGNALWIRE_PROJECT = os.environ.get("SIGNALWIRE_PROJECT_ID", "70aa2fb9-dd43-4ca5-80bc-a5f315910782")
+SIGNALWIRE_TOKEN = os.environ.get("SIGNALWIRE_API_TOKEN", "")
+SIGNALWIRE_SPACE = os.environ.get("SIGNALWIRE_SPACE", "chatpairportrideshare-com")
+
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+
+DEANGELO_CELL = os.environ.get("DEANGELO_CELL", "+12163213000")
+ALEX_NUMBER = os.environ.get("ALEX_NUMBER", "+12162936500")
 
 SUPABASE_HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -88,39 +114,726 @@ SUPABASE_HEADERS = {
 # =============================================================================
 # PRICING
 # =============================================================================
-BASE_RATE        = 2.50
-MINIMUM_FARE     = 35.00
-BOOKING_FEE      = 5.00
-NIGHT_SURCHARGE  = 0.15
+
+BASE_RATE = 2.50
+MINIMUM_FARE = 35.00
+BOOKING_FEE = 5.00
+NIGHT_SURCHARGE = 0.15
 HOLIDAY_SURCHARGE = 0.20
 
 CLE_FLAT_RATES = {
-    "downtown_cleveland": 35, "ohio_city": 35, "tremont": 35,
-    "university_circle": 40, "cleveland_heights": 45, "lakewood": 40,
-    "parma": 40, "strongsville": 50, "westlake": 45, "mentor": 55,
-    "medina": 60, "akron": 75, "canton": 95, "youngstown": 140,
-    "columbus": 175, "pittsburgh": 200,
+    "downtown_cleveland": 35,
+    "ohio_city": 35,
+    "tremont": 35,
+    "university_circle": 40,
+    "cleveland_heights": 45,
+    "lakewood": 40,
+    "parma": 40,
+    "strongsville": 50,
+    "westlake": 45,
+    "mentor": 55,
+    "medina": 60,
+    "akron": 75,
+    "canton": 95,
+    "youngstown": 140,
+    "columbus": 175,
+    "pittsburgh": 200,
 }
 
 US_HOLIDAYS_2026 = [
-    "2026-01-01", "2026-01-19", "2026-02-16", "2026-05-25",
-    "2026-07-03", "2026-07-04", "2026-09-07", "2026-11-26",
-    "2026-11-27", "2026-12-24", "2026-12-25", "2026-12-31",
+    "2026-01-01",
+    "2026-01-19",
+    "2026-02-16",
+    "2026-05-25",
+    "2026-07-03",
+    "2026-07-04",
+    "2026-09-07",
+    "2026-11-26",
+    "2026-11-27",
+    "2026-12-24",
+    "2026-12-25",
+    "2026-12-31",
 ]
 
 # =============================================================================
 # SYSTEM PROMPT — ALL BEHAVIORAL RULES INCLUDED
 # =============================================================================
+
 ALEX_SYSTEM_PROMPT = """
 You are Alex, the AI booking concierge for CHATP Concierge — a nationwide
 premium ground transportation service specializing in airport rides.
 
 ## YOUR PERSONALITY
+
 - Warm, professional, efficient — like a premium hotel concierge
 - Match the caller's pace and energy (speech cadence detection)
 - Use the caller's name naturally once you learn it
 - Never robotic, never rushed, never pushy
 - Use "guest" — never "rider" or "passenger"
+
+## CONVERSATION FLOW — Follow these steps IN ORDER:
+
+### Step 1: GREETING
+
+- Call lookup_guest with the caller's phone number FIRST
+- Returning guest: "Welcome back, [Name]! Great to hear from you again."
+  If they have a preferred driver: "Would you like [Driver] again?"
+  If they have saved routes: "Would you like your usual [route] trip?"
+- New guest: "Thank you for calling CHATP Concierge! I'm Alex, and I'd
+  be happy to help with your airport transportation. May I have your name?"
+
+### Step 2: COLLECT PICKUP ADDRESS
+
+- "Where will we be picking you up?"
+- Call validate_address to confirm via Google Maps
+- Read back the validated address: "I have [address] — is that correct?"
+- CONFIDENCE RULE: If confidence < 80%, repeat back and ask to confirm
+
+### Step 3: IDENTIFY DESTINATION
+
+- "And which airport are you heading to?"
+- If unsure, call find_nearest_airport
+- For Cleveland addresses to Hopkins: use flat-rate zones
+
+### Step 4: QUOTE THE FARE
+
+- Call calculate_fare — handles CLE flat rates AND nationwide distance
+- Read the fare clearly: "Your ride from [pickup] to [airport] is $[fare]."
+- Fares are GUARANTEED — never say "estimated" or "approximately"
+- The booking fee is included — never mention it separately
+- QUOTE-ONLY MODE: If guest just wants a price, give it and offer to
+  book when ready. Don't push. "That fare is locked in whenever you're
+  ready to book. Just call us back at this number."
+
+### Step 5: COLLECT BOOKING DETAILS
+
+- Date: "What date would you like to be picked up?"
+- Time: "And what time?" (suggest preferred_pickup_time for returning guests)
+- Passengers: "How many guests will be traveling?"
+- Flight number (optional): "Do you have a flight number? It helps us
+  track your flight and adjust if there are delays."
+- Extra stops: "Will you need any stops along the way?"
+
+### Step 6: CONFIRM ALL DETAILS
+
+- Read back EVERYTHING before booking:
+  "Let me confirm: Picking you up at [address] on [date] at [time],
+  heading to [airport]. [X] guests. Your fare is $[amount].
+  Does everything look good?"
+- Wait for EXPLICIT confirmation before proceeding
+- Never assume — never skip this step
+
+### Step 7: BOOK THE RESERVATION
+
+- Call create_reservation with all collected details
+- Read confirmation number clearly and slowly: "Your confirmation number
+  is CHATP-[number]. Let me spell that out..."
+- Call send_confirmation_sms to text the guest their details
+
+### Step 8: DESTINATION UPSELL (subtle, optional)
+
+- ONLY after primary booking is 100% complete and confirmed
+- prefers_full_trip guests: proactively offer all remaining legs
+- accepts_multi_leg guests: slightly more forward offer
+- Everyone else: "By the way, we also provide ground transportation
+  in [destination city]. Would you like me to arrange that?"
+- If declined: "No problem at all!" — do NOT re-offer on same call
+
+### Step 9: WEATHER SIGN-OFF
+
+- Call get_weather_for_trip for the guest's city
+- Incorporate naturally: "Bundle up, it's 28° out there today!"
+  or "Looks like beautiful weather — enjoy your trip!"
+- Close: "Thank you for choosing CHATP Concierge, [Name]. Have a
+  wonderful [trip/day/evening]!"
+
+## CRITICAL RULES
+
+### Fare Compliance
+
+- NEVER quote a fare without calling calculate_fare first
+- NEVER book without quoting the fare AND getting confirmation
+- Fares are GUARANTEED — the price you quote is the price they pay
+
+### Transfer Rules (Two-Attempt Rule)
+
+- If guest asks to speak with a person: transfer IMMEDIATELY, no resistance
+- Call transfer_to_dispatch — this connects to DeAngelo at 216-321-3000
+- If transfer fails on first attempt, try ONE more time
+- If second attempt fails: "I apologize for the difficulty. Let me have
+  our team leader call you back within 15 minutes." Then log the incident.
+- NEVER make a guest ask more than once to speak with a human
+
+### Payment
+
+- Payment is collected by the DRIVER — never on the phone
+- If asked: "Payment is handled directly with your driver. We accept
+  all major credit cards, Apple Pay, Google Pay, cash, Venmo, and Zelle."
+
+### Mobility & Special Assistance
+
+- If guest mentions wheelchair, walker, mobility issues, or disability:
+  note it on the reservation and confirm accommodations
+- Inside assistance: "Would you like our driver to assist you to the door?"
+- Driveway/curbside preference: ask and note it
+- NEVER make assumptions about ability — ask respectfully
+
+### Promo Codes
+
+- Only process if GUEST brings it up — never offer unprompted
+- Call validate_promo_code to verify and calculate discount
+
+### Error Handling
+
+- If a tool fails: Don't mention technical errors to guest
+- Fallback: "Let me make a note of that and our team will follow up shortly."
+- If guest provides incomplete info: "That's okay, we can note that as
+  approximate and you can update us later by calling or texting this number."
+
+## VOICE STYLE
+
+- Warm but professional — like a high-end hotel concierge
+- Clear and measured pace — don't rush through numbers or addresses
+- Naturally enthusiastic: "Perfect!", "Great choice!", "Absolutely!"
+- Pause briefly after quoting the fare — let the guest process
+- Speech fillers while tools run: "One moment...", "Let me check on that..."
+"""
+
+ALEX_POST_PROMPT = """
+After each response, self-check:
+
+1. Did I confirm the guest's details before proceeding?
+2. Am I following the conversation flow IN ORDER?
+3. Did I match the guest's energy and pace?
+4. Am I being warm but professional — not robotic?
+5. Did I use the guest's name naturally?
+6. If the booking is complete, did I offer destination service?
+7. Did I provide a weather-aware sign-off?
+8. Did I follow the confidence rule (80% threshold)?
+9. Did I respect the two-attempt transfer rule?
+10. Did I handle any mobility/assistance needs respectfully?
+"""
+
+# =============================================================================
+# HELPER: Generate confirmation code
+# =============================================================================
+
+
+def generate_confirmation_code():
+    """Generate CHATP-XXXXXX confirmation code."""
+    chars = string.ascii_uppercase + string.digits
+    code = "".join(random.choices(chars, k=6))
+    return f"CHATP-{code}"
+
+
+# =============================================================================
+# ALEX v3 AGENT CLASS
+# =============================================================================
+
+
+class AlexAgent(AgentBase):
+    """CHATP's nationwide AI booking concierge — 18 SWAIG tools + DeepSeek Brain."""
+
+    def __init__(self):
+        super().__init__(
+            name="Alex - CHATP Concierge",
+            route="/",
+        )
+
+        # System prompt
+        self.prompt_add_section("System Prompt", body=ALEX_SYSTEM_PROMPT)
+        self.set_post_prompt(ALEX_POST_PROMPT)
+
+        # Voice — ElevenLabs for premium quality
+        self.add_language(
+            name="English",
+            code="en-US",
+            voice="elevenlabs.rachel",
+            speech_fillers=True,
+            engine="elevenlabs",
+        )
+
+        # Timing and behavior
+        self.set_params(
+            {
+                "end_of_speech_timeout": 1200,
+                "attention_timeout": 15000,
+                "inactivity_timeout": 60000,
+                "background_file_loops": -1,
+                "background_file_volume": 8,
+                "conscience": True,
+                "swaig_allow_swml": True,
+                "local_tz": "America/New_York",
+            }
+        )
+
+        # Hints for speech recognition
+        self.set_hints(
+            [
+                "CHATP",
+                "C-H-A-T-P",
+                "concierge",
+                "Hopkins",
+                "Cleveland",
+                "CLE",
+                "airport",
+                "reservation",
+                "confirmation",
+            ]
+        )
+
+        logger.info("Alex v3.4.0 initialized — 18 SWAIG tools + DeepSeek Brain")
+
+    # =========================================================================
+    # TOOL 1: LOOKUP GUEST
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="lookup_guest",
+        description="Find an existing guest by phone number. Call FIRST on every inbound call.",
+        parameters={
+            "phone": {
+                "type": "string",
+                "description": "Phone in E.164 format (+12165551234)",
+            },
+        },
+    )
+    def lookup_guest(self, args, raw_data):
+        phone = args.get("phone", "").strip()
+        if not phone:
+            return {"response": "I need a phone number to look up."}
+
+        if not phone.startswith("+"):
+            phone = "+1" + (
+                phone.replace("-", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace(" ", "")
+            )
+
+        try:
+            resp = requests.get(
+                f"{SUPABASE_URL}/rest/v1/guests",
+                headers=SUPABASE_HEADERS,
+                params={"phone": f"eq.{phone}", "select": "*"},
+                timeout=8,
+            )
+            data = resp.json()
+            if data and len(data) > 0:
+                g = data[0]
+                result = (
+                    f"Returning guest: {g.get('first_name','')} {g.get('last_name','')}. "
+                )
+                result += f"Total trips: {g.get('total_trips', 0)}. "
+                if g.get("preferred_driver"):
+                    result += f"Preferred driver: {g['preferred_driver']}. "
+                if g.get("preferred_pickup_time"):
+                    result += (
+                        f"Usually travels at: {g['preferred_pickup_time']}. "
+                    )
+                if g.get("mobility_needs"):
+                    result += f"Mobility notes: {g['mobility_needs']}. "
+                if g.get("language_preference") and g[
+                    "language_preference"
+                ] != "en":
+                    result += f"Language: {g['language_preference']}. "
+                result += "Greet them warmly by name."
+                logger.info(
+                    f"Found guest: {g.get('first_name','')} ({phone})"
+                )
+                return {"response": result}
+            else:
+                logger.info(f"New guest: {phone}")
+                return {
+                    "response": "New guest — no record found. Ask for their name."
+                }
+        except Exception as e:
+            logger.error(f"lookup_guest error: {e}")
+            return {
+                "response": "Could not look up guest. Greet as new and ask for name."
+            }
+
+    # =========================================================================
+    # TOOL 2: CREATE GUEST
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="create_guest",
+        description="Create a new guest profile after collecting their name.",
+        parameters={
+            "first_name": {"type": "string", "description": "Guest first name"},
+            "last_name": {"type": "string", "description": "Guest last name"},
+            "phone": {"type": "string", "description": "Phone in E.164 format"},
+            "email": {"type": "string", "description": "Email (optional)"},
+        },
+    )
+    def create_guest(self, args, raw_data):
+        phone = args.get("phone", "")
+        if not phone.startswith("+"):
+            phone = "+1" + (
+                phone.replace("-", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace(" ", "")
+            )
+        try:
+            payload = {
+                "first_name": args.get("first_name", ""),
+                "last_name": args.get("last_name", ""),
+                "phone": phone,
+                "email": args.get("email", ""),
+                "total_trips": 0,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            resp = requests.post(
+                f"{SUPABASE_URL}/rest/v1/guests",
+                headers=SUPABASE_HEADERS,
+                json=payload,
+                timeout=8,
+            )
+            if resp.status_code in (200, 201):
+                logger.info(
+                    f"Created guest: {payload['first_name']} {payload['last_name']}"
+                )
+                return {
+                    "response": f"Guest profile created for {payload['first_name']} {payload['last_name']}."
+                }
+            return {"response": "Guest noted. Proceeding with booking."}
+        except Exception as e:
+            logger.error(f"create_guest error: {e}")
+            return {"response": "Guest noted. Proceeding with booking."}
+
+    # =========================================================================
+    # TOOL 3: CREATE RESERVATION
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="create_reservation",
+        description="Create a reservation. ONLY call after guest confirms ALL details.",
+        parameters={
+            "guest_name": {"type": "string"},
+            "guest_phone": {"type": "string"},
+            "pickup_address": {"type": "string"},
+            "destination": {"type": "string"},
+            "pickup_date": {"type": "string", "description": "YYYY-MM-DD"},
+            "pickup_time": {"type": "string", "description": "HH:MM"},
+            "passengers": {"type": "integer"},
+            "fare": {"type": "number"},
+            "flight_number": {
+                "type": "string",
+                "description": "Optional",
+            },
+            "special_notes": {
+                "type": "string",
+                "description": "Mobility needs, extra stops, etc.",
+            },
+        },
+    )
+    def create_reservation(self, args, raw_data):
+        confirmation = generate_confirmation_code()
+        fare = args.get("fare", 0)
+        driver_share = round(fare * 0.85, 2)
+        chatp_share = round(fare * 0.15, 2)
+
+        try:
+            payload = {
+                "confirmation_code": confirmation,
+                "guest_name": args.get("guest_name", ""),
+                "guest_phone": args.get("guest_phone", ""),
+                "pickup_address": args.get("pickup_address", ""),
+                "destination": args.get("destination", ""),
+                "pickup_date": args.get("pickup_date", ""),
+                "pickup_time": args.get("pickup_time", ""),
+                "passengers": args.get("passengers", 1),
+                "fare": fare,
+                "driver_share": driver_share,
+                "chatp_share": chatp_share,
+                "flight_number": args.get("flight_number", ""),
+                "special_notes": args.get("special_notes", ""),
+                "status": "confirmed",
+                "booking_source": "voice_alex",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            resp = requests.post(
+                f"{SUPABASE_URL}/rest/v1/reservations",
+                headers=SUPABASE_HEADERS,
+                json=payload,
+                timeout=10,
+            )
+            if resp.status_code in (200, 201):
+                logger.info(
+                    f"Reservation created: {confirmation} — ${fare}"
+                )
+                return {
+                    "response": (
+                        f"Reservation confirmed! Confirmation number: {confirmation}. "
+                        f"Fare: ${fare}. Read the confirmation number clearly and slowly to the guest."
+                    )
+                }
+
+            logger.error(f"Reservation save failed: {resp.status_code}")
+            return {
+                "response": (
+                    f"Reservation noted with confirmation {confirmation}. "
+                    "Our team will follow up to confirm details."
+                )
+            }
+        except Exception as e:
+            logger.error(f"create_reservation error: {e}")
+            return {
+                "response": (
+                    f"Reservation noted with confirmation {confirmation}. "
+                    "Our team will follow up shortly."
+                )
+            }
+
+    # =========================================================================
+    # TOOL 4: CALCULATE FARE
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="calculate_fare",
+        description="Calculate fare. CLE flat-rate zones first, then distance-based for all others.",
+        parameters={
+            "pickup_address": {"type": "string"},
+            "destination_address": {"type": "string"},
+            "airport_code": {
+                "type": "string",
+                "description": "3-letter code like CLE, LAX",
+            },
+            "pickup_date": {
+                "type": "string",
+                "description": "YYYY-MM-DD",
+            },
+            "pickup_time": {
+                "type": "string",
+                "description": "HH:MM 24h",
+            },
+        },
+    )
+    def calculate_fare(self, args, raw_data):
+        pickup = args.get("pickup_address", "")
+        destination = args.get("destination_address", "")
+        airport_code = args.get("airport_code", "").upper()
+        pickup_date = args.get("pickup_date", "")
+        pickup_time = args.get("pickup_time", "")
+
+        # Check CLE flat rates first
+        if (
+            airport_code == "CLE"
+            or "hopkins" in destination.lower()
+            or "cle" in destination.lower()
+        ):
+            pickup_lower = pickup.lower()
+            for zone, rate in CLE_FLAT_RATES.items():
+                zone_words = zone.replace("_", " ")
+                if zone_words in pickup_lower:
+                    fare = rate
+
+                    # Night surcharge (10pm-5am)
+                    if pickup_time:
+                        try:
+                            hour = int(pickup_time.split(":")[0])
+                            if hour >= 22 or hour < 5:
+                                fare = round(
+                                    fare * (1 + NIGHT_SURCHARGE)
+                                )
+                        except ValueError:
+                            pass
+
+                    # Holiday surcharge
+                    if pickup_date in US_HOLIDAYS_2026:
+                        fare = round(
+                            fare * (1 + HOLIDAY_SURCHARGE)
+                        )
+
+                    fare = max(fare, MINIMUM_FARE)
+                    return {
+                        "response": (
+                            f"Flat-rate fare from {zone_words.title()} to CLE Airport: ${fare}. "
+                            "This is a guaranteed flat rate — no surprises."
+                        )
+                    }
+
+        # Distance-based pricing via Google Maps
+        if not GOOGLE_MAPS_API_KEY:
+            return {
+                "response": (
+                    "Fare calculation requires address verification. "
+                    "Ask guest to confirm both addresses and I'll provide a quote."
+                )
+            }
+
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/distancematrix/json",
+                params={
+                    "origins": pickup,
+                    "destinations": destination,
+                    "key": GOOGLE_MAPS_API_KEY,
+                    "units": "imperial",
+                },
+                timeout=8,
+            )
+            data = r.json()
+            if data.get("status") == "OK":
+                element = data["rows"][0]["elements"][0]
+                if element.get("status") == "OK":
+                    miles = element["distance"]["value"] / 1609.34
+                    fare = round(
+                        max(miles * BASE_RATE, MINIMUM_FARE)
+                        + BOOKING_FEE
+                    )
+
+                    if pickup_time:
+                        try:
+                            hour = int(pickup_time.split(":")[0])
+                            if hour >= 22 or hour < 5:
+                                fare = round(
+                                    fare * (1 + NIGHT_SURCHARGE)
+                                )
+                        except ValueError:
+                            pass
+
+                    if pickup_date in US_HOLIDAYS_2026:
+                        fare = round(
+                            fare * (1 + HOLIDAY_SURCHARGE)
+                        )
+
+                    return {
+                        "response": (
+                            f"Fare: ${fare} for {round(miles, 1)} miles. "
+                            "This is a guaranteed flat rate."
+                        )
+                    }
+
+            return {
+                "response": (
+                    "I couldn't calculate the exact distance. "
+                    "Let me note the addresses and our team will provide a fare quote shortly."
+                )
+            }
+        except Exception as e:
+            logger.error(f"calculate_fare error: {e}")
+            return {
+                "response": (
+                    "I'm having trouble calculating the fare right now. "
+                    "Let me note your details and our team will call you back with a quote."
+                )
+            }
+
+    # =========================================================================
+    # TOOL 5: VALIDATE ADDRESS
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="validate_address",
+        description="Validate a pickup or destination address via Google Maps Geocoding.",
+        parameters={
+            "address": {
+                "type": "string",
+                "description": "Address to validate",
+            },
+        },
+    )
+    def validate_address(self, args, raw_data):
+        address = args.get("address", "")
+        if not address:
+            return {"response": "I need an address to validate."}
+
+        if not GOOGLE_MAPS_API_KEY:
+            return {"response": f"Address noted: {address}. Proceeding with booking."}
+
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"address": address, "key": GOOGLE_MAPS_API_KEY},
+                timeout=5,
+            )
+            data = r.json()
+            if data.get("status") == "OK" and data.get("results"):
+                fmt = data["results"][0]["formatted_address"]
+                logger.info(f"Validated address: {fmt}")
+                return {
+                    "response": (
+                        f"Validated address: {fmt}. "
+                        "Read this back to the guest for confirmation."
+                    )
+                }
+
+            return {
+                "response": (
+                    f"I couldn't find an exact match for '{address}'. "
+                    "Ask the guest for cross streets or a nearby landmark."
+                )
+            }
+        except Exception as e:
+            logger.error(f"validate_address error: {e}")
+            return {"response": f"Address noted: {address}. Proceeding."}
+
+    # =========================================================================
+    # TOOL 6: FIND NEAREST AIRPORT
+    # =========================================================================
+
+    @AgentBase.tool(
+        name="find_nearest_airport",
+        description="Find the nearest major airport to a given address.",
+        parameters={
+            "address": {"type": "string"},
+        },
+    )
+    def find_nearest_airport(self, args, raw_data):
+        address = args.get("address", "")
+        if not GOOGLE_MAPS_API_KEY:
+            return {"response": "Ask the guest which airport they prefer."}
+
+        try:
+            # Geocode the address first
+            gr = requests.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"address": address, "key": GOOGLE_MAPS_API_KEY},
+                timeout=5,
+            ).json()
+            if gr.get("status") != "OK" or not gr.get("results"):
+                return {
+                    "response": (
+                        "Couldn't locate that address. Ask which airport they prefer."
+                    )
+                }
+
+            loc = gr["results"][0]["geometry"]["location"]
+
+            # Search for nearby airports
+            pr = requests.get(
+                "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                params={
+                    "location": f"{loc['lat']},{loc['lng']}",
+                    "radius": 80000,
+                    "type": "airport",
+                    "key": GOOGLE_MAPS_API_KEY,
+                },
+                timeout=8,
+            ).json()
+
+            airports = []
+            for place in pr.get("results", [])[:5]:
+                name = place.get("name", "")
+                if "international" in name.lower() or "airport" in name.lower():
+                    airports.append(name)
+
+            if airports:
+                return {
+                    "response": (
+                        f"Nearest airports: {', '.join(airports[:3])}. "
+                        "Ask the guest which one."
+                    )
+                }
+
+            return {
+                "response": (
+                    "No major airports found nearby. Ask the guest for their destination airport."
 
 ## CONVERSATION FLOW — Follow these steps IN ORDER:
 
